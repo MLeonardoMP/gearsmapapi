@@ -187,18 +187,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sql`SELECT COUNT(*)::int as count FROM departamentos`,
         sql`SELECT COUNT(*)::int as count FROM municipios`,
         sql`SELECT COUNT(*)::int as count FROM produccion`,
-        sql`SELECT MAX(anio::int * 100 + mes::int) as ultimo FROM produccion`
+        sql`
+          SELECT anio, mes 
+          FROM produccion 
+          ORDER BY anio::int DESC, 
+            CASE UPPER(mes)
+              WHEN 'ENERO' THEN 1
+              WHEN 'FEBRERO' THEN 2
+              WHEN 'MARZO' THEN 3
+              WHEN 'ABRIL' THEN 4
+              WHEN 'MAYO' THEN 5
+              WHEN 'JUNIO' THEN 6
+              WHEN 'JULIO' THEN 7
+              WHEN 'AGOSTO' THEN 8
+              WHEN 'SEPTIEMBRE' THEN 9
+              WHEN 'OCTUBRE' THEN 10
+              WHEN 'NOVIEMBRE' THEN 11
+              WHEN 'DICIEMBRE' THEN 12
+              ELSE 0
+            END DESC
+          LIMIT 1
+        `
       ])
       
-      const ultimoPeriodo = ultimaActualizacion.rows[0]?.ultimo
-      const anio = ultimoPeriodo ? Math.floor(ultimoPeriodo / 100) : null
-      const mes = ultimoPeriodo ? ultimoPeriodo % 100 : null
+      const row = ultimaActualizacion.rows[0]
       
       return res.json({
         total_departamentos: deptos.rows[0]?.count || 0,
         total_municipios: municipios.rows[0]?.count || 0,
         total_registros_produccion: produccionStats.rows[0]?.count || 0,
-        ultima_actualizacion: { anio, mes }
+        ultima_actualizacion: { 
+          anio: row ? parseInt(row.anio) : null, 
+          mes: row ? row.mes : null 
+        }
       })
     }
 
