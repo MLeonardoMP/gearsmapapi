@@ -1,15 +1,11 @@
 import { Hono } from 'hono'
 import { handle } from 'hono/vercel'
-import { cors } from 'hono/cors'
 import { sql } from '@vercel/postgres'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 
 // SIN basePath - Vercel ya monta en /api/
 const app = new Hono()
-
-// Middlewares simplificados
-app.use('*', cors())
 
 // ========== HEALTH CHECK (super simple) ==========
 app.get('/health', (c) => {

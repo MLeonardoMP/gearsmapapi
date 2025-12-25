@@ -9,24 +9,24 @@ importers:
   .:
     dependencies:
       '@hono/node-server':
-        specifier: ^1.19.7
-        version: 1.19.7(hono@4.11.1)
+        specifier: 1.19.7
+        version: 1.19.7(hono@4.6.14)
       '@hono/zod-validator':
-        specifier: ^0.4.2
-        version: 0.4.3(hono@4.11.1)(zod@3.25.76)
+        specifier: 0.4.2
+        version: 0.4.2(hono@4.6.14)(zod@3.24.1)
       '@vercel/postgres':
-        specifier: ^0.10.0
+        specifier: 0.10.0
         version: 0.10.0
       hono:
-        specifier: ^4.6.14
-        version: 4.11.1
+        specifier: 4.6.14
+        version: 4.6.14
       zod:
-        specifier: ^3.24.1
-        version: 3.25.76
+        specifier: 3.24.1
+        version: 3.24.1
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20241218.0
-        version: 4.20251223.0
+        version: 4.20251225.0
       '@types/node':
         specifier: ^22.10.2
         version: 22.19.3
@@ -69,8 +69,8 @@ importers:
 
 packages:
 
-  '@cloudflare/workers-types@4.20251223.0':
-    resolution: {integrity: sha512-r7oxkFjbMcmzhIrzjXaiJlGFDmmeu3+GlwkLlZbUxVWrXHTCkvqu+DrWnNmF6xZEf9j+2/PpuKIS21J522xhJA==}
+  '@cloudflare/workers-types@4.20251225.0':
+    resolution: {integrity: sha512-ZZl0cNLFcsBRFKtMftKWOsfAybUYSeiTMzpQV1NlTVlByHAs1rGQt45Jw/qz8LrfHoq9PGTieSj9W350Gi4Pvg==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -300,8 +300,8 @@ packages:
     peerDependencies:
       hono: ^4
 
-  '@hono/zod-validator@0.4.3':
-    resolution: {integrity: sha512-xIgMYXDyJ4Hj6ekm9T9Y27s080Nl9NXHcJkOvkXPhubOLj8hZkOL8pDnnXfvCf5xEE8Q4oMFenQUZZREUY2gqQ==}
+  '@hono/zod-validator@0.4.2':
+    resolution: {integrity: sha512-1rrlBg+EpDPhzOV4hT9pxr5+xDVmKuz6YJl+la7VCwK6ass5ldyKm5fD+umJdV2zhHD6jROoCCv8NbTwyfhT0g==}
     peerDependencies:
       hono: '>=3.9.0'
       zod: ^3.19.1
@@ -1110,8 +1110,8 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
 
-  fastq@1.19.1:
-    resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
+  fastq@1.20.1:
+    resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
 
   fd-slicer@1.1.0:
     resolution: {integrity: sha512-cE1qsB/VwyQozZ+q1dGxR8LBYNZeofhEdUNGSMbQD3Gw2lAzX9Zb3uIU6Ebc/Fmyjo9AWWfnn0AUCHqtevs/8g==}
@@ -1200,8 +1200,8 @@ packages:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
     engines: {node: '>=8'}
 
-  hono@4.11.1:
-    resolution: {integrity: sha512-KsFcH0xxHes0J4zaQgWbYwmz3UPOOskdqZmItstUG93+Wk1ePBLkLGwbP9zlmh1BFUiL8Qp+Xfu9P7feJWpGNg==}
+  hono@4.6.14:
+    resolution: {integrity: sha512-j4VkyUp2xazGJ8eCCLN1Vm/bxdvm/j5ZuU9AIjLu9vapn2M44p9L3Ktr9Vnb2RN2QtcR/wVjZVMlT5k7GJQgPw==}
     engines: {node: '>=16.9.0'}
 
   http-errors@1.4.0:
@@ -1994,12 +1994,12 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+  zod@3.24.1:
+    resolution: {integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==}
 
 snapshots:
 
-  '@cloudflare/workers-types@4.20251223.0': {}
+  '@cloudflare/workers-types@4.20251225.0': {}
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -2143,14 +2143,14 @@ snapshots:
 
   '@fastify/busboy@2.1.1': {}
 
-  '@hono/node-server@1.19.7(hono@4.11.1)':
+  '@hono/node-server@1.19.7(hono@4.6.14)':
     dependencies:
-      hono: 4.11.1
+      hono: 4.6.14
 
-  '@hono/zod-validator@0.4.3(hono@4.11.1)(zod@3.25.76)':
+  '@hono/zod-validator@0.4.2(hono@4.6.14)(zod@3.24.1)':
     dependencies:
-      hono: 4.11.1
-      zod: 3.25.76
+      hono: 4.6.14
+      zod: 3.24.1
 
   '@humanfs/core@0.19.1': {}
 
@@ -2203,7 +2203,7 @@ snapshots:
   '@nodelib/fs.walk@1.2.8':
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
-      fastq: 1.19.1
+      fastq: 1.20.1
 
   '@pkgr/core@0.2.9': {}
 
@@ -3017,7 +3017,7 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
-  fastq@1.19.1:
+  fastq@1.20.1:
     dependencies:
       reusify: 1.1.0
 
@@ -3105,7 +3105,7 @@ snapshots:
 
   has-flag@4.0.0: {}
 
-  hono@4.11.1: {}
+  hono@4.6.14: {}
 
   http-errors@1.4.0:
     dependencies:
@@ -3795,4 +3795,4 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod@3.25.76: {}
+  zod@3.24.1: {}
