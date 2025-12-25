@@ -3,12 +3,9 @@ import { handle } from 'hono/vercel'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import { secureHeaders } from 'hono/secure-headers'
-import { createPool } from '@vercel/postgres'
+import { sql } from '@vercel/postgres'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-
-// Crear pool de DB
-const db = createPool()
 
 const app = new Hono().basePath('/api')
 
@@ -33,7 +30,7 @@ app.use('*', async (c, next) => {
 })
 
 // ========== HEALTH CHECK ==========
-app.get('/health', (c) => c.json({ status: 'ok', runtime: 'edge' }))
+app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }))
 
 // ========== DEPARTAMENTOS ==========
 const departamentosSchema = z.object({
@@ -45,7 +42,7 @@ app.get('/departamentos', zValidator('query', departamentosSchema), async (c) =>
     const { departamento_id } = c.req.valid('query')
 
     if (departamento_id) {
-      const result = await db.sql`
+      const result = await sql`
         SELECT gid, departamento_id, departamento, area_departamento, x, y
         FROM departamentos
         WHERE departamento_id = ${departamento_id}
@@ -54,7 +51,7 @@ app.get('/departamentos', zValidator('query', departamentosSchema), async (c) =>
       return c.json(result.rows[0])
     }
 
-    const result = await db.sql`
+    const result = await sql`
       SELECT gid, departamento_id, departamento, area_departamento, x, y
       FROM departamentos
       ORDER BY departamento
@@ -77,17 +74,17 @@ app.get('/municipios', zValidator('query', municipiosSchema), async (c) => {
 
     if (municipio_id) {
       const result =
-        await db.sql`SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y FROM municipios WHERE municipio_id = ${municipio_id}`
+        await sql`SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y FROM municipios WHERE municipio_id = ${municipio_id}`
       if (result.rows.length === 0) return c.json({ error: 'No encontrado' }, 404)
       return c.json(result.rows[0])
     } else if (departamento_id) {
       const result =
-        await db.sql`SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y FROM municipios WHERE departamento_id = ${departamento_id} ORDER BY municipio`
+        await sql`SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y FROM municipios WHERE departamento_id = ${departamento_id} ORDER BY municipio`
       return c.json(result.rows)
     }
 
     const result =
-      await db.sql`SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y FROM municipios ORDER BY departamento, municipio`
+      await sql`SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y FROM municipios ORDER BY departamento, municipio`
     return c.json(result.rows)
   } catch (_err) {
     return c.json({ error: 'Error' }, 500)
@@ -100,7 +97,7 @@ app.get('/geoms-departamentos', zValidator('query', departamentosSchema), async 
     const { departamento_id } = c.req.valid('query')
 
     if (departamento_id) {
-      const result = await db.sql`
+      const result = await sql`
         SELECT departamento_id, departamento, geom
         FROM departamentos
         WHERE departamento_id = ${departamento_id}
@@ -109,7 +106,7 @@ app.get('/geoms-departamentos', zValidator('query', departamentosSchema), async 
       return c.json(result.rows[0])
     }
 
-    const result = await db.sql`
+    const result = await sql`
       SELECT departamento_id, departamento, geom
       FROM departamentos
       ORDER BY departamento
@@ -137,14 +134,14 @@ app.get('/geoms-municipios', zValidator('query', geomsMunicipiosSchema), async (
 
     if (municipio_id) {
       const result =
-        await db.sql`SELECT municipio_id, departamento_id, municipio, geom FROM municipios WHERE municipio_id = ${municipio_id}`
+        await sql`SELECT municipio_id, departamento_id, municipio, geom FROM municipios WHERE municipio_id = ${municipio_id}`
       if (result.rows.length === 0) return c.json({ error: 'No encontrado' }, 404)
       return c.json(result.rows[0])
     } else if (departamento_id) {
       const count =
-        await db.sql`SELECT COUNT(*) as total FROM municipios WHERE departamento_id = ${departamento_id}`
+        await sql`SELECT COUNT(*) as total FROM municipios WHERE departamento_id = ${departamento_id}`
       const total = parseInt(count.rows[0].total)
-      const result = await db.sql`
+      const result = await sql`
         SELECT municipio_id, departamento_id, municipio, geom
         FROM municipios
         WHERE departamento_id = ${departamento_id}
@@ -158,7 +155,7 @@ app.get('/geoms-municipios', zValidator('query', geomsMunicipiosSchema), async (
     }
 
     const result =
-      await db.sql`SELECT municipio_id, departamento_id, municipio FROM municipios ORDER BY departamento_id, municipio`
+      await sql`SELECT municipio_id, departamento_id, municipio FROM municipios ORDER BY departamento_id, municipio`
     return c.json(result.rows)
   } catch (_err) {
     return c.json({ error: 'Error' }, 500)
@@ -177,7 +174,7 @@ app.get('/datos-acggp', zValidator('query', datosAcggpSchema), async (c) => {
     let result
 
     if (municipio_id) {
-      result = await db.sql`
+      result = await sql`
         SELECT aliado, proyecto, actividad, tematica, publico, anio,
                departamento, municipio, fecha_ejecucion_plan, fecha_ejecucion_real,
                numero_participantes, municipio_id, departamento_id
@@ -186,7 +183,7 @@ app.get('/datos-acggp', zValidator('query', datosAcggpSchema), async (c) => {
         ORDER BY fecha_ejecucion_real DESC
       `
     } else if (departamento_id) {
-      result = await db.sql`
+      result = await sql`
         SELECT aliado, proyecto, actividad, tematica, publico, anio,
                departamento, municipio, fecha_ejecucion_plan, fecha_ejecucion_real,
                numero_participantes, municipio_id, departamento_id
@@ -195,7 +192,7 @@ app.get('/datos-acggp', zValidator('query', datosAcggpSchema), async (c) => {
         ORDER BY fecha_ejecucion_real DESC
       `
     } else {
-      result = await db.sql`
+      result = await sql`
         SELECT aliado, proyecto, actividad, tematica, publico, anio,
                departamento, municipio, fecha_ejecucion_plan, fecha_ejecucion_real,
                numero_participantes, municipio_id, departamento_id
@@ -222,24 +219,24 @@ app.get('/acggp-departamental', zValidator('query', acggpDepartamentalSchema), a
     let result
 
     if (departamento_id && anio) {
-      result = await db.sql`
+      result = await sql`
         SELECT * FROM acggp_deps_anio
         WHERE departamento_id = ${departamento_id} AND anio = ${anio}
       `
     } else if (departamento_id) {
-      result = await db.sql`
+      result = await sql`
         SELECT * FROM acggp_deps_anio
         WHERE departamento_id = ${departamento_id}
         ORDER BY anio DESC
       `
     } else if (anio) {
-      result = await db.sql`
+      result = await sql`
         SELECT * FROM acggp_deps_anio
         WHERE anio = ${anio}
         ORDER BY departamento
       `
     } else {
-      result = await db.sql`
+      result = await sql`
         SELECT * FROM acggp_deps_anio
         ORDER BY departamento, anio DESC
       `
@@ -263,20 +260,20 @@ app.get('/estadisticas-departamentales', zValidator('query', estadisticasSchema)
 
     if (municipio_id) {
       const munRes =
-        await db.sql`SELECT departamento_id FROM municipios WHERE municipio_id = ${municipio_id}`
+        await sql`SELECT departamento_id FROM municipios WHERE municipio_id = ${municipio_id}`
       if (munRes.rows.length === 0) return c.json({ error: 'No encontrado' }, 404)
       const depId = munRes.rows[0].departamento_id
       const result =
-        await db.sql`SELECT * FROM estadisticas_departamentales WHERE departamento_id = ${depId}`
+        await sql`SELECT * FROM estadisticas_departamentales WHERE departamento_id = ${depId}`
       return c.json(result.rows[0])
     } else if (departamento_id) {
       const result =
-        await db.sql`SELECT * FROM estadisticas_departamentales WHERE departamento_id = ${departamento_id}`
+        await sql`SELECT * FROM estadisticas_departamentales WHERE departamento_id = ${departamento_id}`
       if (result.rows.length === 0) return c.json({ error: 'No encontrado' }, 404)
       return c.json(result.rows[0])
     }
 
-    const result = await db.sql`SELECT * FROM estadisticas_departamentales ORDER BY departamento`
+    const result = await sql`SELECT * FROM estadisticas_departamentales ORDER BY departamento`
     return c.json(result.rows)
   } catch (_err) {
     return c.json({ error: 'Error' }, 500)
@@ -296,7 +293,7 @@ app.get('/produccion', zValidator('query', produccionSchema), async (c) => {
   try {
     const { municipio_id, departamento_id, recurso, anio, mes } = c.req.valid('query')
 
-    const result = await db.sql`
+    const result = await sql`
       SELECT * FROM produccion 
       WHERE (${municipio_id || null} IS NULL OR municipio_id = ${municipio_id})
         AND (${departamento_id || null} IS NULL OR departamento_id = ${departamento_id})
@@ -329,15 +326,15 @@ app.get(
 
       if (departamento_id && anio) {
         result =
-          await db.sql`SELECT * FROM production_deps_anio WHERE departamento_id = ${departamento_id} AND anio = ${anio}`
+          await sql`SELECT * FROM production_deps_anio WHERE departamento_id = ${departamento_id} AND anio = ${anio}`
       } else if (departamento_id) {
         result =
-          await db.sql`SELECT * FROM production_deps_anio WHERE departamento_id = ${departamento_id} ORDER BY anio DESC`
+          await sql`SELECT * FROM production_deps_anio WHERE departamento_id = ${departamento_id} ORDER BY anio DESC`
       } else if (anio) {
         result =
-          await db.sql`SELECT * FROM production_deps_anio WHERE anio = ${anio} ORDER BY departamento`
+          await sql`SELECT * FROM production_deps_anio WHERE anio = ${anio} ORDER BY departamento`
       } else {
-        result = await db.sql`SELECT * FROM production_deps_anio ORDER BY departamento, anio DESC`
+        result = await sql`SELECT * FROM production_deps_anio ORDER BY departamento, anio DESC`
       }
 
       return c.json(result.rows)
