@@ -1,327 +1,299 @@
-import { Hono } from 'hono'
-import { handle } from 'hono/vercel'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { sql } from '@vercel/postgres'
-import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
 
-// SIN basePath - Vercel ya monta en /api/
-const app = new Hono()
-
-// ========== HEALTH CHECK (super simple) ==========
-app.get('/health', (c) => {
-  return c.json({ status: 'ok', timestamp: new Date().toISOString() })
-})
-
-// ========== DEPARTAMENTOS ==========
-const departamentosSchema = z.object({
-  departamento_id: z.string().optional(),
-})
-
-app.get('/departamentos', zValidator('query', departamentosSchema), async (c) => {
+// Handler directo sin Hono
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const url = new URL(req.url || '', `http://${req.headers.host}`)
+  const path = url.pathname.replace('/api', '')
+  
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end()
+  }
+  
   try {
-    const { departamento_id } = c.req.valid('query')
-
-    if (departamento_id) {
-      const result = await sql`
-        SELECT gid, departamento_id, departamento, area_departamento, x, y
-        FROM departamentos
-        WHERE departamento_id = ${departamento_id}
-      `
-      if (result.rows.length === 0) return c.json({ error: 'No encontrado' }, 404)
-      return c.json(result.rows[0])
+    // ========== HEALTH CHECK ==========
+    if (path === '/health' || path === '/health/') {
+      return res.json({ status: 'ok', timestamp: new Date().toISOString() })
     }
 
-    const result = await sql`
-      SELECT gid, departamento_id, departamento, area_departamento, x, y
-      FROM departamentos
-      ORDER BY departamento
-    `
-    return c.json(result.rows)
-  } catch (_err) {
-    return c.json({ error: 'Error' }, 500)
-  }
-})
-
-// ========== MUNICIPIOS ==========
-const municipiosSchema = z.object({
-  municipio_id: z.string().optional(),
-  departamento_id: z.string().optional(),
-})
-
-app.get('/municipios', zValidator('query', municipiosSchema), async (c) => {
-  try {
-    const { municipio_id, departamento_id } = c.req.valid('query')
-
-    if (municipio_id) {
-      const result =
-        await sql`SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y FROM municipios WHERE municipio_id = ${municipio_id}`
-      if (result.rows.length === 0) return c.json({ error: 'No encontrado' }, 404)
-      return c.json(result.rows[0])
-    } else if (departamento_id) {
-      const result =
-        await sql`SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y FROM municipios WHERE departamento_id = ${departamento_id} ORDER BY municipio`
-      return c.json(result.rows)
+    // ========== DEPARTAMENTOS ==========
+    if (path === '/departamentos' || path === '/departamentos/') {
+      const { departamento_id } = req.query
+      if (departamento_id && typeof departamento_id === 'string') {
+        const result = await sql`
+          SELECT departamento_id, departamento, geocode, centroide
+          FROM departamentos
+          WHERE departamento_id = ${departamento_id}
+        `
+        return res.json(result.rows)
+      } else {
+        const result = await sql`
+          SELECT departamento_id, departamento, geocode, centroide
+          FROM departamentos
+          ORDER BY departamento
+        `
+        return res.json(result.rows)
+      }
     }
 
-    const result =
-      await sql`SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y FROM municipios ORDER BY departamento, municipio`
-    return c.json(result.rows)
-  } catch (_err) {
-    return c.json({ error: 'Error' }, 500)
-  }
-})
-
-// ========== GEOMS DEPARTAMENTOS ==========
-app.get('/geoms-departamentos', zValidator('query', departamentosSchema), async (c) => {
-  try {
-    const { departamento_id } = c.req.valid('query')
-
-    if (departamento_id) {
-      const result = await sql`
-        SELECT departamento_id, departamento, geom
-        FROM departamentos
-        WHERE departamento_id = ${departamento_id}
-      `
-      if (result.rows.length === 0) return c.json({ error: 'No encontrado' }, 404)
-      return c.json(result.rows[0])
+    // ========== MUNICIPIOS ==========
+    if (path === '/municipios' || path === '/municipios/') {
+      const { departamento_id, municipio_id } = req.query
+      if (municipio_id && typeof municipio_id === 'string') {
+        const result = await sql`
+          SELECT municipio_id, municipio, departamento_id, departamento, geocode, centroide
+          FROM municipios
+          WHERE municipio_id = ${municipio_id}
+        `
+        return res.json(result.rows)
+      } else if (departamento_id && typeof departamento_id === 'string') {
+        const result = await sql`
+          SELECT municipio_id, municipio, departamento_id, departamento, geocode, centroide
+          FROM municipios
+          WHERE departamento_id = ${departamento_id}
+          ORDER BY municipio
+        `
+        return res.json(result.rows)
+      } else {
+        const result = await sql`
+          SELECT municipio_id, municipio, departamento_id, departamento, geocode, centroide
+          FROM municipios
+          ORDER BY departamento, municipio
+        `
+        return res.json(result.rows)
+      }
     }
 
-    const result = await sql`
-      SELECT departamento_id, departamento, geom
-      FROM departamentos
-      ORDER BY departamento
-    `
-    return c.json(result.rows)
-  } catch (_err) {
-    return c.json({ error: 'Error' }, 500)
-  }
-})
+    // ========== PRODUCCION ==========
+    if (path === '/produccion' || path === '/produccion/') {
+      const { municipio_id, departamento_id, pozo_id, anio, mes, limit: limitParam } = req.query
+      const limit = limitParam && typeof limitParam === 'string' ? parseInt(limitParam) : 100
+      
+      if (pozo_id && typeof pozo_id === 'string') {
+        const result = await sql`
+          SELECT pozo_id, pozo, contrato, empresa, departamento_id, departamento,
+                 municipio_id, municipio, longitud, latitud, anio, mes,
+                 dias, petroleo_bpd, gas_kpcd, agua_bpd, gas_lift_kpcd, gas_lift_kpcd_iny
+          FROM produccion
+          WHERE pozo_id = ${pozo_id}
+          ORDER BY anio DESC, mes DESC
+          LIMIT ${limit}
+        `
+        return res.json(result.rows)
+      } else if (municipio_id && typeof municipio_id === 'string') {
+        const result = await sql`
+          SELECT pozo_id, pozo, contrato, empresa, departamento_id, departamento,
+                 municipio_id, municipio, longitud, latitud, anio, mes,
+                 dias, petroleo_bpd, gas_kpcd, agua_bpd, gas_lift_kpcd, gas_lift_kpcd_iny
+          FROM produccion
+          WHERE municipio_id = ${municipio_id}
+          ORDER BY anio DESC, mes DESC
+          LIMIT ${limit}
+        `
+        return res.json(result.rows)
+      } else if (departamento_id && typeof departamento_id === 'string') {
+        const result = await sql`
+          SELECT pozo_id, pozo, contrato, empresa, departamento_id, departamento,
+                 municipio_id, municipio, longitud, latitud, anio, mes,
+                 dias, petroleo_bpd, gas_kpcd, agua_bpd, gas_lift_kpcd, gas_lift_kpcd_iny
+          FROM produccion
+          WHERE departamento_id = ${departamento_id}
+          ORDER BY anio DESC, mes DESC
+          LIMIT ${limit}
+        `
+        return res.json(result.rows)
+      } else {
+        // Por defecto: obtener la producción más reciente
+        const anioFiltro = anio && typeof anio === 'string' ? parseInt(anio) : 2024
+        const mesFiltro = mes && typeof mes === 'string' ? parseInt(mes) : 12
+        const result = await sql`
+          SELECT pozo_id, pozo, contrato, empresa, departamento_id, departamento,
+                 municipio_id, municipio, longitud, latitud, anio, mes,
+                 dias, petroleo_bpd, gas_kpcd, agua_bpd, gas_lift_kpcd, gas_lift_kpcd_iny
+          FROM produccion
+          WHERE anio = ${anioFiltro} AND mes = ${mesFiltro}
+          ORDER BY petroleo_bpd DESC
+          LIMIT ${limit}
+        `
+        return res.json(result.rows)
+      }
+    }
 
-// ========== GEOMS MUNICIPIOS ==========
-const geomsMunicipiosSchema = z.object({
-  municipio_id: z.string().optional(),
-  departamento_id: z.string().optional(),
-  page: z.string().optional().default('1'),
-  limit: z.string().optional().default('20'),
-})
+    // ========== PRODUCCION DEPARTAMENTAL ==========
+    if (path === '/produccion-departamental' || path === '/produccion-departamental/') {
+      const { departamento_id, anio } = req.query
+      if (departamento_id && typeof departamento_id === 'string') {
+        const result = await sql`
+          SELECT departamento_id, departamento, anio, mes,
+                 total_pozos, petroleo_bpd, gas_kpcd, agua_bpd
+          FROM produccion_departamental
+          WHERE departamento_id = ${departamento_id}
+          ORDER BY anio DESC, mes DESC
+        `
+        return res.json(result.rows)
+      } else if (anio && typeof anio === 'string') {
+        const result = await sql`
+          SELECT departamento_id, departamento, anio, mes,
+                 total_pozos, petroleo_bpd, gas_kpcd, agua_bpd
+          FROM produccion_departamental
+          WHERE anio = ${parseInt(anio)}
+          ORDER BY departamento, mes
+        `
+        return res.json(result.rows)
+      } else {
+        const result = await sql`
+          SELECT departamento_id, departamento, anio, mes,
+                 total_pozos, petroleo_bpd, gas_kpcd, agua_bpd
+          FROM produccion_departamental
+          ORDER BY anio DESC, mes DESC
+          LIMIT 200
+        `
+        return res.json(result.rows)
+      }
+    }
 
-app.get('/geoms-municipios', zValidator('query', geomsMunicipiosSchema), async (c) => {
-  try {
-    const { municipio_id, departamento_id, page, limit } = c.req.valid('query')
-    const p = parseInt(page)
-    const l = parseInt(limit)
-    const offset = (p - 1) * l
+    // ========== GEOMS DEPARTAMENTOS ==========
+    if (path === '/geoms-departamentos' || path === '/geoms-departamentos/') {
+      const { departamento_id } = req.query
+      if (departamento_id && typeof departamento_id === 'string') {
+        const result = await sql`
+          SELECT departamento_id, departamento, geom
+          FROM departamentos
+          WHERE departamento_id = ${departamento_id}
+        `
+        return res.json(result.rows)
+      } else {
+        const result = await sql`
+          SELECT departamento_id, departamento, geom
+          FROM departamentos
+          ORDER BY departamento
+        `
+        return res.json(result.rows)
+      }
+    }
 
-    if (municipio_id) {
-      const result =
-        await sql`SELECT municipio_id, departamento_id, municipio, geom FROM municipios WHERE municipio_id = ${municipio_id}`
-      if (result.rows.length === 0) return c.json({ error: 'No encontrado' }, 404)
-      return c.json(result.rows[0])
-    } else if (departamento_id) {
-      const count =
-        await sql`SELECT COUNT(*) as total FROM municipios WHERE departamento_id = ${departamento_id}`
-      const total = parseInt(count.rows[0].total)
-      const result = await sql`
-        SELECT municipio_id, departamento_id, municipio, geom
-        FROM municipios
-        WHERE departamento_id = ${departamento_id}
-        ORDER BY municipio
-        LIMIT ${l} OFFSET ${offset}
-      `
-      return c.json({
-        data: result.rows,
-        pagination: { total, page: p, limit: l, pages: Math.ceil(total / l) },
+    // ========== GEOMS MUNICIPIOS ==========
+    if (path === '/geoms-municipios' || path === '/geoms-municipios/') {
+      const { municipio_id, departamento_id } = req.query
+      if (municipio_id && typeof municipio_id === 'string') {
+        const result = await sql`
+          SELECT municipio_id, municipio, departamento_id, departamento, geom
+          FROM municipios
+          WHERE municipio_id = ${municipio_id}
+        `
+        return res.json(result.rows)
+      } else if (departamento_id && typeof departamento_id === 'string') {
+        const result = await sql`
+          SELECT municipio_id, municipio, departamento_id, departamento, geom
+          FROM municipios
+          WHERE departamento_id = ${departamento_id}
+          ORDER BY municipio
+        `
+        return res.json(result.rows)
+      } else {
+        const result = await sql`
+          SELECT municipio_id, municipio, departamento_id, departamento, geom
+          FROM municipios
+          ORDER BY departamento, municipio
+        `
+        return res.json(result.rows)
+      }
+    }
+
+    // ========== ESTADISTICAS ==========
+    if (path === '/estadisticas' || path === '/estadisticas/') {
+      const [deptos, municipios, pozos, ultimaActualizacion] = await Promise.all([
+        sql`SELECT COUNT(*)::int as count FROM departamentos`,
+        sql`SELECT COUNT(*)::int as count FROM municipios`,
+        sql`SELECT COUNT(DISTINCT pozo_id)::int as count FROM produccion`,
+        sql`SELECT MAX(anio * 100 + mes) as ultimo FROM produccion`
+      ])
+      
+      const ultimoPeriodo = ultimaActualizacion.rows[0]?.ultimo
+      const anio = ultimoPeriodo ? Math.floor(ultimoPeriodo / 100) : null
+      const mes = ultimoPeriodo ? ultimoPeriodo % 100 : null
+      
+      return res.json({
+        total_departamentos: deptos.rows[0]?.count || 0,
+        total_municipios: municipios.rows[0]?.count || 0,
+        total_pozos: pozos.rows[0]?.count || 0,
+        ultima_actualizacion: { anio, mes }
       })
     }
 
-    const result =
-      await sql`SELECT municipio_id, departamento_id, municipio FROM municipios ORDER BY departamento_id, municipio`
-    return c.json(result.rows)
-  } catch (_err) {
-    return c.json({ error: 'Error' }, 500)
-  }
-})
-
-// ========== DATOS ACGGP ==========
-const datosAcggpSchema = z.object({
-  municipio_id: z.string().optional(),
-  departamento_id: z.string().optional(),
-})
-
-app.get('/datos-acggp', zValidator('query', datosAcggpSchema), async (c) => {
-  try {
-    const { municipio_id, departamento_id } = c.req.valid('query')
-    let result
-
-    if (municipio_id) {
-      result = await sql`
-        SELECT aliado, proyecto, actividad, tematica, publico, anio,
-               departamento, municipio, fecha_ejecucion_plan, fecha_ejecucion_real,
-               numero_participantes, municipio_id, departamento_id
-        FROM datos_acggp
-        WHERE municipio_id = ${municipio_id}
-        ORDER BY fecha_ejecucion_real DESC
-      `
-    } else if (departamento_id) {
-      result = await sql`
-        SELECT aliado, proyecto, actividad, tematica, publico, anio,
-               departamento, municipio, fecha_ejecucion_plan, fecha_ejecucion_real,
-               numero_participantes, municipio_id, departamento_id
-        FROM datos_acggp
-        WHERE departamento_id = ${departamento_id}
-        ORDER BY fecha_ejecucion_real DESC
-      `
-    } else {
-      result = await sql`
-        SELECT aliado, proyecto, actividad, tematica, publico, anio,
-               departamento, municipio, fecha_ejecucion_plan, fecha_ejecucion_real,
-               numero_participantes, municipio_id, departamento_id
-        FROM datos_acggp
-        ORDER BY fecha_ejecucion_real DESC
-      `
-    }
-
-    return c.json(result.rows)
-  } catch (_err) {
-    return c.json({ error: 'Error al obtener datos ACGGP' }, 500)
-  }
-})
-
-// ========== ACGGP DEPARTAMENTAL ==========
-const acggpDepartamentalSchema = z.object({
-  departamento_id: z.string().optional(),
-  anio: z.string().optional(),
-})
-
-app.get('/acggp-departamental', zValidator('query', acggpDepartamentalSchema), async (c) => {
-  try {
-    const { departamento_id, anio } = c.req.valid('query')
-    let result
-
-    if (departamento_id && anio) {
-      result = await sql`
-        SELECT * FROM acggp_deps_anio
-        WHERE departamento_id = ${departamento_id} AND anio = ${anio}
-      `
-    } else if (departamento_id) {
-      result = await sql`
-        SELECT * FROM acggp_deps_anio
-        WHERE departamento_id = ${departamento_id}
-        ORDER BY anio DESC
-      `
-    } else if (anio) {
-      result = await sql`
-        SELECT * FROM acggp_deps_anio
-        WHERE anio = ${anio}
-        ORDER BY departamento
-      `
-    } else {
-      result = await sql`
-        SELECT * FROM acggp_deps_anio
-        ORDER BY departamento, anio DESC
-      `
-    }
-
-    return c.json(result.rows)
-  } catch (_err) {
-    return c.json({ error: 'Error' }, 500)
-  }
-})
-
-// ========== ESTADISTICAS DEPARTAMENTALES ==========
-const estadisticasSchema = z.object({
-  departamento_id: z.string().optional(),
-  municipio_id: z.string().optional(),
-})
-
-app.get('/estadisticas-departamentales', zValidator('query', estadisticasSchema), async (c) => {
-  try {
-    const { departamento_id, municipio_id } = c.req.valid('query')
-
-    if (municipio_id) {
-      const munRes =
-        await sql`SELECT departamento_id FROM municipios WHERE municipio_id = ${municipio_id}`
-      if (munRes.rows.length === 0) return c.json({ error: 'No encontrado' }, 404)
-      const depId = munRes.rows[0].departamento_id
-      const result =
-        await sql`SELECT * FROM estadisticas_departamentales WHERE departamento_id = ${depId}`
-      return c.json(result.rows[0])
-    } else if (departamento_id) {
-      const result =
-        await sql`SELECT * FROM estadisticas_departamentales WHERE departamento_id = ${departamento_id}`
-      if (result.rows.length === 0) return c.json({ error: 'No encontrado' }, 404)
-      return c.json(result.rows[0])
-    }
-
-    const result = await sql`SELECT * FROM estadisticas_departamentales ORDER BY departamento`
-    return c.json(result.rows)
-  } catch (_err) {
-    return c.json({ error: 'Error' }, 500)
-  }
-})
-
-// ========== PRODUCCION ==========
-const produccionSchema = z.object({
-  municipio_id: z.string().optional(),
-  departamento_id: z.string().optional(),
-  recurso: z.string().optional(),
-  anio: z.string().optional(),
-  mes: z.string().optional(),
-})
-
-app.get('/produccion', zValidator('query', produccionSchema), async (c) => {
-  try {
-    const { municipio_id, departamento_id, recurso, anio, mes } = c.req.valid('query')
-
-    const result = await sql`
-      SELECT * FROM produccion 
-      WHERE (${municipio_id || null} IS NULL OR municipio_id = ${municipio_id})
-        AND (${departamento_id || null} IS NULL OR departamento_id = ${departamento_id})
-        AND (${recurso || null} IS NULL OR recurso = ${recurso})
-        AND (${anio || null} IS NULL OR anio = ${anio})
-        AND (${mes || null} IS NULL OR mes = ${mes})
-      ORDER BY anio DESC, mes ASC
-      LIMIT 1000
-    `
-
-    return c.json(result.rows)
-  } catch (_err) {
-    return c.json({ error: 'Error' }, 500)
-  }
-})
-
-// ========== PRODUCCION DEPARTAMENTAL ==========
-const produccionDepartamentalSchema = z.object({
-  departamento_id: z.string().optional(),
-  anio: z.string().optional(),
-})
-
-app.get(
-  '/produccion-departamental',
-  zValidator('query', produccionDepartamentalSchema),
-  async (c) => {
-    try {
-      const { departamento_id, anio } = c.req.valid('query')
-      let result
-
-      if (departamento_id && anio) {
-        result =
-          await sql`SELECT * FROM production_deps_anio WHERE departamento_id = ${departamento_id} AND anio = ${anio}`
-      } else if (departamento_id) {
-        result =
-          await sql`SELECT * FROM production_deps_anio WHERE departamento_id = ${departamento_id} ORDER BY anio DESC`
-      } else if (anio) {
-        result =
-          await sql`SELECT * FROM production_deps_anio WHERE anio = ${anio} ORDER BY departamento`
+    // ========== DATOS ACGGP ==========
+    if (path === '/datos-acggp' || path === '/datos-acggp/') {
+      const { anio, mes, empresa } = req.query
+      const limit = 100
+      
+      if (empresa && typeof empresa === 'string') {
+        const result = await sql`
+          SELECT id, empresa, anio, mes, petroleo_bpd, gas_kpcd
+          FROM datos_acggp
+          WHERE empresa ILIKE ${'%' + empresa + '%'}
+          ORDER BY anio DESC, mes DESC
+          LIMIT ${limit}
+        `
+        return res.json(result.rows)
+      } else if (anio && typeof anio === 'string' && mes && typeof mes === 'string') {
+        const result = await sql`
+          SELECT id, empresa, anio, mes, petroleo_bpd, gas_kpcd
+          FROM datos_acggp
+          WHERE anio = ${parseInt(anio)} AND mes = ${parseInt(mes)}
+          ORDER BY petroleo_bpd DESC
+        `
+        return res.json(result.rows)
       } else {
-        result = await sql`SELECT * FROM production_deps_anio ORDER BY departamento, anio DESC`
+        const result = await sql`
+          SELECT id, empresa, anio, mes, petroleo_bpd, gas_kpcd
+          FROM datos_acggp
+          ORDER BY anio DESC, mes DESC
+          LIMIT ${limit}
+        `
+        return res.json(result.rows)
       }
-
-      return c.json(result.rows)
-    } catch (_err) {
-      return c.json({ error: 'Error' }, 500)
     }
-  }
-)
 
-export default handle(app)
+    // ========== ACGGP DEPARTAMENTAL ==========
+    if (path === '/acggp-departamental' || path === '/acggp-departamental/') {
+      const { departamento_id, anio, mes } = req.query
+      
+      if (departamento_id && typeof departamento_id === 'string') {
+        const result = await sql`
+          SELECT id, departamento_id, departamento, anio, mes, petroleo_bpd, gas_kpcd
+          FROM acggp_departamental
+          WHERE departamento_id = ${departamento_id}
+          ORDER BY anio DESC, mes DESC
+        `
+        return res.json(result.rows)
+      } else if (anio && typeof anio === 'string' && mes && typeof mes === 'string') {
+        const result = await sql`
+          SELECT id, departamento_id, departamento, anio, mes, petroleo_bpd, gas_kpcd
+          FROM acggp_departamental
+          WHERE anio = ${parseInt(anio)} AND mes = ${parseInt(mes)}
+          ORDER BY petroleo_bpd DESC
+        `
+        return res.json(result.rows)
+      } else {
+        const result = await sql`
+          SELECT id, departamento_id, departamento, anio, mes, petroleo_bpd, gas_kpcd
+          FROM acggp_departamental
+          ORDER BY anio DESC, mes DESC
+          LIMIT 200
+        `
+        return res.json(result.rows)
+      }
+    }
+
+    // Ruta no encontrada
+    return res.status(404).json({ error: 'Not Found', path })
+    
+  } catch (error) {
+    console.error('Error:', error)
+    return res.status(500).json({ error: 'Internal Server Error' })
+  }
