@@ -48,13 +48,8 @@ app.get('/', zValidator('query', schema), async (c) => {
       query += ' LIMIT 100'
     }
 
-    const client = await db.connect()
-    try {
-      const result = await client.query(query, params)
-      return c.json(result.rows)
-    } finally {
-      client.release()
-    }
+    const result = await db.query(query, params)
+    return c.json(result.rows)
   } catch (_err) {
     return c.json({ error: 'Error' }, 500)
   }
