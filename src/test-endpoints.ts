@@ -9,10 +9,14 @@ async function test() {
       const res = await fetch(baseUrl + endpoint)
       const data = await res.json()
       console.log(`Status: ${res.status}`)
-      console.log(`Headers:`, Object.fromEntries(res.headers.entries()))
+      const headersObj: Record<string, string> = {}
+      res.headers.forEach((value, key) => {
+        headersObj[key] = value
+      })
+      console.log(`Headers:`, headersObj)
       console.log(`Data:`, JSON.stringify(data).substring(0, 100) + '...')
     } catch (err) {
-      console.error(`Error testing ${endpoint}:`, err.message)
+      console.error(`Error testing ${endpoint}:`, err instanceof Error ? err.message : String(err))
     }
   }
 }
