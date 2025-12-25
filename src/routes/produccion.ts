@@ -17,38 +17,19 @@ app.get('/', zValidator('query', schema), async (c) => {
   try {
     const { municipio_id, departamento_id, recurso, anio, mes } = c.req.valid('query')
 
-    let query = 'SELECT * FROM produccion WHERE 1=1'
-    const params: unknown[] = []
+    // Usamos el patrón db.sql para consistencia con el resto de la API
+    // El truco (val IS NULL OR col = val) permite filtros opcionales en una sola consulta
+    const result = await db.sql`
+      SELECT * FROM produccion 
+      WHERE (${municipio_id || null} IS NULL OR municipio_id = ${municipio_id})
+        AND (${departamento_id || null} IS NULL OR departamento_id = ${departamento_id})
+        AND (${recurso || null} IS NULL OR recurso = ${recurso})
+        AND (${anio || null} IS NULL OR anio = ${anio})
+        AND (${mes || null} IS NULL OR mes = ${mes})
+      ORDER BY anio DESC, mes ASC
+      LIMIT 1000
+    `
 
-    if (municipio_id) {
-      params.push(municipio_id)
-      query += ` AND municipio_id = $${params.length}`
-    }
-    if (departamento_id) {
-      params.push(departamento_id)
-      query += ` AND departamento_id = $${params.length}`
-    }
-    if (recurso) {
-      params.push(recurso)
-      query += ` AND recurso = $${params.length}`
-    }
-    if (anio) {
-      params.push(anio)
-      query += ` AND anio = $${params.length}`
-    }
-    if (mes) {
-      params.push(mes)
-      query += ` AND mes = $${params.length}`
-    }
-
-    query += ' ORDER BY anio DESC, mes ASC'
-
-    // Si no hay filtros, limitamos a 100 para evitar sobrecarga
-    if (params.length === 0) {
-      query += ' LIMIT 100'
-    }
-
-    const result = await db.query(query, params)
     return c.json(result.rows)
   } catch (_err) {
     return c.json({ error: 'Error' }, 500)
