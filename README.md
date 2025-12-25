@@ -39,7 +39,7 @@ pnpm install
 pnpm dev
 ```
 
-Esto iniciará el entorno de desarrollo de Vercel, que emula las funciones Edge y la conexión a la base de datos si está configurada.
+Esto iniciará el servidor local en `http://localhost:3002` utilizando `tsx` y `@hono/node-server`. Asegúrate de tener un archivo `.env` con las credenciales de la base de datos.
 
 ## Despliegue
 

@@ -1,36 +1,20 @@
 import { Hono } from 'hono'
 import { handle } from 'hono/vercel'
-import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
-import { secureHeaders } from 'hono/secure-headers'
 import { sql } from '@vercel/postgres'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 
-const app = new Hono().basePath('/api')
+// SIN basePath - Vercel ya monta en /api/
+const app = new Hono()
 
-// Middlewares Globales
-app.use('*', logger())
-app.use('*', secureHeaders())
-app.use(
-  '*',
-  cors({
-    origin: ['https://gearsmap.com', 'https://www.gearsmap.com', 'http://localhost:3000'],
-    allowMethods: ['GET', 'OPTIONS'],
-    maxAge: 600,
-  })
-)
+// Middlewares simplificados
+app.use('*', cors())
 
-// Middleware de Cache
-app.use('*', async (c, next) => {
-  await next()
-  if (c.res.status === 200) {
-    c.res.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
-  }
+// ========== HEALTH CHECK (super simple) ==========
+app.get('/health', (c) => {
+  return c.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
-
-// ========== HEALTH CHECK ==========
-app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }))
 
 // ========== DEPARTAMENTOS ==========
 const departamentosSchema = z.object({

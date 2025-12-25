@@ -1,10 +1,6 @@
 {
   "version": 2,
-  "alias": "api.gearsmap.com",
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api"
-    }
+    { "source": "/api/:path*", "destination": "/api" }
   ]
 }

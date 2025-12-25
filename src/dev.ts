@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { logger } from 'hono/logger'
@@ -39,9 +40,9 @@ app.route('/produccion-departamental', produccionDepartamental)
 
 app.get('/health', (c) => c.json({ status: 'ok', environment: 'local-dev' }))
 
-console.log('🚀 Servidor de prueba corriendo en http://localhost:3001')
+console.log('🚀 Servidor de prueba corriendo en http://localhost:3002')
 
 serve({
   fetch: app.fetch,
-  port: 3001,
+  port: 3002,
 })
