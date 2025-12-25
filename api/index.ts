@@ -22,18 +22,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ========== DEPARTAMENTOS ==========
+    // Columnas reales: gid, departamento_id, departamento, area_departamento, geom, x, y
     if (path === '/departamentos' || path === '/departamentos/') {
       const { departamento_id } = req.query
       if (departamento_id && typeof departamento_id === 'string') {
         const result = await sql`
-          SELECT departamento_id, departamento, geocode, centroide
+          SELECT gid, departamento_id, departamento, area_departamento, x, y
           FROM departamentos
           WHERE departamento_id = ${departamento_id}
         `
         return res.json(result.rows)
       } else {
         const result = await sql`
-          SELECT departamento_id, departamento, geocode, centroide
+          SELECT gid, departamento_id, departamento, area_departamento, x, y
           FROM departamentos
           ORDER BY departamento
         `
@@ -42,18 +43,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ========== MUNICIPIOS ==========
+    // Columnas reales: gid, municipio_id, departamento_id, departamento, municipio, geom, x, y
     if (path === '/municipios' || path === '/municipios/') {
       const { departamento_id, municipio_id } = req.query
       if (municipio_id && typeof municipio_id === 'string') {
         const result = await sql`
-          SELECT municipio_id, municipio, departamento_id, departamento, geocode, centroide
+          SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y
           FROM municipios
           WHERE municipio_id = ${municipio_id}
         `
         return res.json(result.rows)
       } else if (departamento_id && typeof departamento_id === 'string') {
         const result = await sql`
-          SELECT municipio_id, municipio, departamento_id, departamento, geocode, centroide
+          SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y
           FROM municipios
           WHERE departamento_id = ${departamento_id}
           ORDER BY municipio
@@ -61,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json(result.rows)
       } else {
         const result = await sql`
-          SELECT municipio_id, municipio, departamento_id, departamento, geocode, centroide
+          SELECT gid, municipio_id, departamento_id, departamento, municipio, x, y
           FROM municipios
           ORDER BY departamento, municipio
         `
@@ -70,26 +72,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ========== PRODUCCION ==========
+    // Columnas reales: departamento, municipio, operadora, campo, contrato, anio, mes, produccion, recurso, municipio_id, departamento_id
     if (path === '/produccion' || path === '/produccion/') {
-      const { municipio_id, departamento_id, pozo_id, anio, mes, limit: limitParam } = req.query
+      const { municipio_id, departamento_id, anio, mes, limit: limitParam } = req.query
       const limit = limitParam && typeof limitParam === 'string' ? parseInt(limitParam) : 100
       
-      if (pozo_id && typeof pozo_id === 'string') {
+      if (municipio_id && typeof municipio_id === 'string') {
         const result = await sql`
-          SELECT pozo_id, pozo, contrato, empresa, departamento_id, departamento,
-                 municipio_id, municipio, longitud, latitud, anio, mes,
-                 dias, petroleo_bpd, gas_kpcd, agua_bpd, gas_lift_kpcd, gas_lift_kpcd_iny
-          FROM produccion
-          WHERE pozo_id = ${pozo_id}
-          ORDER BY anio DESC, mes DESC
-          LIMIT ${limit}
-        `
-        return res.json(result.rows)
-      } else if (municipio_id && typeof municipio_id === 'string') {
-        const result = await sql`
-          SELECT pozo_id, pozo, contrato, empresa, departamento_id, departamento,
-                 municipio_id, municipio, longitud, latitud, anio, mes,
-                 dias, petroleo_bpd, gas_kpcd, agua_bpd, gas_lift_kpcd, gas_lift_kpcd_iny
+          SELECT departamento_id, departamento, municipio_id, municipio, 
+                 operadora, campo, contrato, anio, mes, produccion, recurso
           FROM produccion
           WHERE municipio_id = ${municipio_id}
           ORDER BY anio DESC, mes DESC
@@ -98,60 +89,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json(result.rows)
       } else if (departamento_id && typeof departamento_id === 'string') {
         const result = await sql`
-          SELECT pozo_id, pozo, contrato, empresa, departamento_id, departamento,
-                 municipio_id, municipio, longitud, latitud, anio, mes,
-                 dias, petroleo_bpd, gas_kpcd, agua_bpd, gas_lift_kpcd, gas_lift_kpcd_iny
+          SELECT departamento_id, departamento, municipio_id, municipio, 
+                 operadora, campo, contrato, anio, mes, produccion, recurso
           FROM produccion
           WHERE departamento_id = ${departamento_id}
           ORDER BY anio DESC, mes DESC
           LIMIT ${limit}
-        `
-        return res.json(result.rows)
-      } else {
-        // Por defecto: obtener la producción más reciente
-        const anioFiltro = anio && typeof anio === 'string' ? parseInt(anio) : 2024
-        const mesFiltro = mes && typeof mes === 'string' ? parseInt(mes) : 12
-        const result = await sql`
-          SELECT pozo_id, pozo, contrato, empresa, departamento_id, departamento,
-                 municipio_id, municipio, longitud, latitud, anio, mes,
-                 dias, petroleo_bpd, gas_kpcd, agua_bpd, gas_lift_kpcd, gas_lift_kpcd_iny
-          FROM produccion
-          WHERE anio = ${anioFiltro} AND mes = ${mesFiltro}
-          ORDER BY petroleo_bpd DESC
-          LIMIT ${limit}
-        `
-        return res.json(result.rows)
-      }
-    }
-
-    // ========== PRODUCCION DEPARTAMENTAL ==========
-    if (path === '/produccion-departamental' || path === '/produccion-departamental/') {
-      const { departamento_id, anio } = req.query
-      if (departamento_id && typeof departamento_id === 'string') {
-        const result = await sql`
-          SELECT departamento_id, departamento, anio, mes,
-                 total_pozos, petroleo_bpd, gas_kpcd, agua_bpd
-          FROM produccion_departamental
-          WHERE departamento_id = ${departamento_id}
-          ORDER BY anio DESC, mes DESC
         `
         return res.json(result.rows)
       } else if (anio && typeof anio === 'string') {
-        const result = await sql`
-          SELECT departamento_id, departamento, anio, mes,
-                 total_pozos, petroleo_bpd, gas_kpcd, agua_bpd
-          FROM produccion_departamental
-          WHERE anio = ${parseInt(anio)}
-          ORDER BY departamento, mes
-        `
-        return res.json(result.rows)
+        const mesFilter = mes && typeof mes === 'string' ? parseInt(mes) : null
+        if (mesFilter) {
+          const result = await sql`
+            SELECT departamento_id, departamento, municipio_id, municipio, 
+                   operadora, campo, contrato, anio, mes, produccion, recurso
+            FROM produccion
+            WHERE anio = ${parseInt(anio)} AND mes = ${mesFilter}
+            ORDER BY produccion DESC
+            LIMIT ${limit}
+          `
+          return res.json(result.rows)
+        } else {
+          const result = await sql`
+            SELECT departamento_id, departamento, municipio_id, municipio, 
+                   operadora, campo, contrato, anio, mes, produccion, recurso
+            FROM produccion
+            WHERE anio = ${parseInt(anio)}
+            ORDER BY mes DESC, produccion DESC
+            LIMIT ${limit}
+          `
+          return res.json(result.rows)
+        }
       } else {
+        // Por defecto: obtener la producción más reciente
         const result = await sql`
-          SELECT departamento_id, departamento, anio, mes,
-                 total_pozos, petroleo_bpd, gas_kpcd, agua_bpd
-          FROM produccion_departamental
-          ORDER BY anio DESC, mes DESC
-          LIMIT 200
+          SELECT departamento_id, departamento, municipio_id, municipio, 
+                 operadora, campo, contrato, anio, mes, produccion, recurso
+          FROM produccion
+          ORDER BY anio DESC, mes DESC, produccion DESC
+          LIMIT ${limit}
         `
         return res.json(result.rows)
       }
@@ -162,14 +138,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { departamento_id } = req.query
       if (departamento_id && typeof departamento_id === 'string') {
         const result = await sql`
-          SELECT departamento_id, departamento, geom
+          SELECT gid, departamento_id, departamento, geom
           FROM departamentos
           WHERE departamento_id = ${departamento_id}
         `
         return res.json(result.rows)
       } else {
         const result = await sql`
-          SELECT departamento_id, departamento, geom
+          SELECT gid, departamento_id, departamento, geom
           FROM departamentos
           ORDER BY departamento
         `
@@ -182,14 +158,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { municipio_id, departamento_id } = req.query
       if (municipio_id && typeof municipio_id === 'string') {
         const result = await sql`
-          SELECT municipio_id, municipio, departamento_id, departamento, geom
+          SELECT gid, municipio_id, municipio, departamento_id, departamento, geom
           FROM municipios
           WHERE municipio_id = ${municipio_id}
         `
         return res.json(result.rows)
       } else if (departamento_id && typeof departamento_id === 'string') {
         const result = await sql`
-          SELECT municipio_id, municipio, departamento_id, departamento, geom
+          SELECT gid, municipio_id, municipio, departamento_id, departamento, geom
           FROM municipios
           WHERE departamento_id = ${departamento_id}
           ORDER BY municipio
@@ -197,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json(result.rows)
       } else {
         const result = await sql`
-          SELECT municipio_id, municipio, departamento_id, departamento, geom
+          SELECT gid, municipio_id, municipio, departamento_id, departamento, geom
           FROM municipios
           ORDER BY departamento, municipio
         `
@@ -207,10 +183,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ========== ESTADISTICAS ==========
     if (path === '/estadisticas' || path === '/estadisticas/') {
-      const [deptos, municipios, pozos, ultimaActualizacion] = await Promise.all([
+      const [deptos, municipios, produccionStats, ultimaActualizacion] = await Promise.all([
         sql`SELECT COUNT(*)::int as count FROM departamentos`,
         sql`SELECT COUNT(*)::int as count FROM municipios`,
-        sql`SELECT COUNT(DISTINCT pozo_id)::int as count FROM produccion`,
+        sql`SELECT COUNT(*)::int as count FROM produccion`,
         sql`SELECT MAX(anio * 100 + mes) as ultimo FROM produccion`
       ])
       
@@ -221,73 +197,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({
         total_departamentos: deptos.rows[0]?.count || 0,
         total_municipios: municipios.rows[0]?.count || 0,
-        total_pozos: pozos.rows[0]?.count || 0,
+        total_registros_produccion: produccionStats.rows[0]?.count || 0,
         ultima_actualizacion: { anio, mes }
       })
-    }
-
-    // ========== DATOS ACGGP ==========
-    if (path === '/datos-acggp' || path === '/datos-acggp/') {
-      const { anio, mes, empresa } = req.query
-      const limit = 100
-      
-      if (empresa && typeof empresa === 'string') {
-        const result = await sql`
-          SELECT id, empresa, anio, mes, petroleo_bpd, gas_kpcd
-          FROM datos_acggp
-          WHERE empresa ILIKE ${'%' + empresa + '%'}
-          ORDER BY anio DESC, mes DESC
-          LIMIT ${limit}
-        `
-        return res.json(result.rows)
-      } else if (anio && typeof anio === 'string' && mes && typeof mes === 'string') {
-        const result = await sql`
-          SELECT id, empresa, anio, mes, petroleo_bpd, gas_kpcd
-          FROM datos_acggp
-          WHERE anio = ${parseInt(anio)} AND mes = ${parseInt(mes)}
-          ORDER BY petroleo_bpd DESC
-        `
-        return res.json(result.rows)
-      } else {
-        const result = await sql`
-          SELECT id, empresa, anio, mes, petroleo_bpd, gas_kpcd
-          FROM datos_acggp
-          ORDER BY anio DESC, mes DESC
-          LIMIT ${limit}
-        `
-        return res.json(result.rows)
-      }
-    }
-
-    // ========== ACGGP DEPARTAMENTAL ==========
-    if (path === '/acggp-departamental' || path === '/acggp-departamental/') {
-      const { departamento_id, anio, mes } = req.query
-      
-      if (departamento_id && typeof departamento_id === 'string') {
-        const result = await sql`
-          SELECT id, departamento_id, departamento, anio, mes, petroleo_bpd, gas_kpcd
-          FROM acggp_departamental
-          WHERE departamento_id = ${departamento_id}
-          ORDER BY anio DESC, mes DESC
-        `
-        return res.json(result.rows)
-      } else if (anio && typeof anio === 'string' && mes && typeof mes === 'string') {
-        const result = await sql`
-          SELECT id, departamento_id, departamento, anio, mes, petroleo_bpd, gas_kpcd
-          FROM acggp_departamental
-          WHERE anio = ${parseInt(anio)} AND mes = ${parseInt(mes)}
-          ORDER BY petroleo_bpd DESC
-        `
-        return res.json(result.rows)
-      } else {
-        const result = await sql`
-          SELECT id, departamento_id, departamento, anio, mes, petroleo_bpd, gas_kpcd
-          FROM acggp_departamental
-          ORDER BY anio DESC, mes DESC
-          LIMIT 200
-        `
-        return res.json(result.rows)
-      }
     }
 
     // Ruta no encontrada
@@ -297,3 +209,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Error:', error)
     return res.status(500).json({ error: 'Internal Server Error' })
   }
+}
