@@ -347,6 +347,4 @@ app.get(
   }
 )
 
-export const runtime = 'edge'
-
 export default handle(app)
