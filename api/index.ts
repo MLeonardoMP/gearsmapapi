@@ -187,7 +187,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sql`SELECT COUNT(*)::int as count FROM departamentos`,
         sql`SELECT COUNT(*)::int as count FROM municipios`,
         sql`SELECT COUNT(*)::int as count FROM produccion`,
-        sql`SELECT MAX(anio * 100 + mes) as ultimo FROM produccion`
+        sql`SELECT MAX(anio::int * 100 + mes::int) as ultimo FROM produccion`
       ])
       
       const ultimoPeriodo = ultimaActualizacion.rows[0]?.ultimo
